@@ -67,10 +67,27 @@ teachers$teacher_prefix <- as.factor(teachers$teacher_prefix)
 
 ##NOW WE CAN START EDA
 summary(donations)
+
+#First let's look at each variable (mostly) on their on
+#project_id
 head(sort(table(donations$project_id), decreasing = T))
+by_project <- donations %>% group_by(project_id) %>%
+  summarize(count_donations = n(),
+            sum_donations = sum(donation_amount),
+            avg_amount = mean(donation_amount)) %>%
+  arrange(desc(count_donations)) 
+head(by_project)
+head(arrange(by_project, desc(sum_donations)))
+ggplot(by_project, aes(x = count_donations)) +
+  geom_bar()
+by_project %>% filter(count_donations < 100) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_bar()
+
+#donor_id
 head(sort(table(donations$donor_id), decreasing = T))
 range(donations$donation_received_date)
-#It doesn't make sense to have donors with thousands of donations (1000+donations per year?) So we'll need to look into these further
+#Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further
 
 #----
 #This below doesn't really work (yet?)
