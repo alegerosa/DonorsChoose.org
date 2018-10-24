@@ -4,7 +4,7 @@ library(tidyverse)
 df_paths <- list.files("data", full.names = TRUE)
 list_of_dfs <- lapply(df_paths, read_csv)
 
-#We name the dataframes in the resulting list witht the file names they came from (minus the extension)
+#We name the dataframes in the resulting list with the file names they came from (minus the extension)
 df_names <- tolower(basename(substr(df_paths, 1, nchar(df_paths)-4)))
 names(list_of_dfs) <- df_names
 
