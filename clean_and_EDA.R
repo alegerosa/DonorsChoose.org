@@ -22,17 +22,6 @@ str(list_of_dfs)
 #Bring 6 separate dataframes to my environment, to make it easier to call them
 list2env(list_of_dfs, .GlobalEnv)
 
-#OJO#####, deal with duplicate Donation_IDs first
-
-#This seems like the right time to split between training, testing and validation
-set.seed(42)
-train_donations <- sample_frac(donations, 0.9)
-train_row_nrs <- as.numeric(rownames(train_donations))
-nontrain_donations <- donations[-train_row_nrs,]
-validate_donations <- sample_frac(nontrain_donations, 0.5)
-validate_row_nrs <- as.numeric(rownames(validate_donations))
-test_donations <- nontrain_donations[-validate_row_nrs,]
-
 #Look at each dataframe to see what additional cleanup is needed
 
 #donations
@@ -75,6 +64,25 @@ schools$school_metro_type <- as.factor(schools$school_metro_type)
 glimpse(teachers)
 table(teachers$teacher_prefix)
 teachers$teacher_prefix <- as.factor(teachers$teacher_prefix)
+
+## Now we check for duplicates, using donation_id because they should be unique for each donation
+donations_duplicates <- donations %>%
+  filter(duplicated(donation_id) | duplicated(donation_id, fromLast = TRUE)) %>%
+  arrange(donation_id)
+#Examine to see if the whole observation is duplicated (which would make it safe to delete)
+View(donations_duplicates)
+#It seems like the only variable that is different is donation_received (the date and time). Because this is the only difference, because the dates are close to each other and because the duplicates are so few, I will assume that they are safe to remove.
+donations <- donations %>% filter(!duplicated(donation_id))
+
+#This seems like the right time to split between training, testing and validation
+set.seed(42)
+train_donations <- sample_frac(donations, 0.9)
+train_row_nrs <- as.numeric(rownames(train_donations))
+nontrain_donations <- donations[-train_row_nrs,]
+validate_donations <- sample_frac(nontrain_donations, 0.5)
+validate_row_nrs <- as.numeric(rownames(validate_donations))
+test_donations <- nontrain_donations[-validate_row_nrs,]
+
 
 ##NOW WE CAN START EDA
 summary(donations)
