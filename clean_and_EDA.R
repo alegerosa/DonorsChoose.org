@@ -22,6 +22,17 @@ str(list_of_dfs)
 #Bring 6 separate dataframes to my environment, to make it easier to call them
 list2env(list_of_dfs, .GlobalEnv)
 
+#OJO#####, deal with duplicate Donation_IDs first
+
+#This seems like the right time to split between training, testing and validation
+set.seed(42)
+train_donations <- sample_frac(donations, 0.9)
+train_row_nrs <- as.numeric(rownames(train_donations))
+nontrain_donations <- donations[-train_row_nrs,]
+validate_donations <- sample_frac(nontrain_donations, 0.5)
+validate_row_nrs <- as.numeric(rownames(validate_donations))
+test_donations <- nontrain_donations[-validate_row_nrs,]
+
 #Look at each dataframe to see what additional cleanup is needed
 
 #donations
