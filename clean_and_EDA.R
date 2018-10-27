@@ -89,23 +89,26 @@ summary(donations)
 
 #First let's look at each variable (mostly) on their on
 #project_id
-head(sort(table(donations$project_id), decreasing = T))
-by_project <- donations %>% group_by(project_id) %>%
+head(sort(table(train_donations$project_id), decreasing = T))
+by_project <- train_donations %>% group_by(project_id) %>%
   summarize(count_donations = n(),
             sum_donations = sum(donation_amount),
             avg_amount = mean(donation_amount)) %>%
   arrange(desc(count_donations)) 
-head(by_project)
+View(head(by_project, n = 25))
 head(arrange(by_project, desc(sum_donations)))
 ggplot(by_project, aes(x = count_donations)) +
-  geom_bar()
-by_project %>% filter(count_donations < 100) %>%
+  geom_bar()+
+  geom_rug()
+#filtering to <100 to zoom in
+by_project %>% filter(count_donations < 75) %>%
   ggplot(aes(x = count_donations)) +
-  geom_bar()
+  geom_bar() +
+  geom_rug()
 
 #donor_id
-head(sort(table(donations$donor_id), decreasing = T))
-range(donations$donation_received_date)
+head(sort(table(train_donations$donor_id), decreasing = T))
+range(train_donations$donation_received_date)
 #Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further
 
 #----
