@@ -1,4 +1,5 @@
 library(tidyverse)
+
 #First, we load the data 
 ## In order to work with all the dataframes in the directory, we'll create a vector with all their paths and then use lapply and read_csv to load all of them at once
 df_paths <- list.files("data", full.names = TRUE)
@@ -74,23 +75,13 @@ View(donations_duplicates)
 #It seems like the only variable that is different is donation_received (the date and time). Because this is the only difference, because the dates are close to each other and because the duplicates are so few, I will assume that they are safe to remove.
 donations <- donations %>% filter(!duplicated(donation_id))
 
-#This seems like the right time to split between training, testing and validation
-set.seed(42)
-train_donations <- sample_frac(donations, 0.9)
-train_row_nrs <- as.numeric(rownames(train_donations))
-nontrain_donations <- donations[-train_row_nrs,]
-validate_donations <- sample_frac(nontrain_donations, 0.5)
-validate_row_nrs <- as.numeric(rownames(validate_donations))
-test_donations <- nontrain_donations[-validate_row_nrs,]
-
-
 ##NOW WE CAN START EDA
 summary(donations)
 
-#First let's look at each variable (mostly) on their on
+#First let's look at each variable on their own (mostly) 
 #project_id
-head(sort(table(train_donations$project_id), decreasing = T))
-by_project <- train_donations %>% group_by(project_id) %>%
+head(sort(table(donations$project_id), decreasing = T))
+by_project <- donations %>% group_by(project_id) %>%
   summarize(count_donations = n(),
             sum_donations = sum(donation_amount),
             avg_amount = mean(donation_amount)) %>%
@@ -100,18 +91,80 @@ head(arrange(by_project, desc(sum_donations)))
 ggplot(by_project, aes(x = count_donations)) +
   geom_bar()+
   geom_rug()
+ggplot(by_project, aes(x = count_donations)) +
+  geom_histogram()+
+  geom_rug()
+ggplot(by_project, aes(x = count_donations)) +
+  geom_density()+
+  geom_rug()
+ggplot(by_project, aes(x = 1, y = count_donations)) +
+  geom_boxplot()
+mean(by_project$count_donations)
+median(by_project$count_donations)
+
 #filtering to <100 to zoom in
 by_project %>% filter(count_donations < 75) %>%
   ggplot(aes(x = count_donations)) +
   geom_bar() +
   geom_rug()
+by_project %>% filter(count_donations < 75) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_histogram() +
+  geom_rug()
+by_project %>% filter(count_donations < 75) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_density() +
+  geom_rug()
+
+#the easier way to get this info
+
+nrow(filter(by_project, count_donations < 10))
+table(by_project$count_donations)
+summary(by_project$count_donations)
+
+#Do projects under 10 donations, indicate projects that never really took off?
+by_project %>% filter(count_donations <= 10) %>%
+  ggplot(aes(x = count_donations, y = sum_donations)) +
+  geom_point(aes(alpha = 0.6))
+#Not really.
+
+summary(by_project$sum_donations)
+#Wow, 75% of projects got $390 or less. Now it would be interesting to see how this compares to projects' goals (Does this reflect that most projects are relatively small, or does it show that only a small minority of projects get funded?)
 
 #donor_id
-head(sort(table(train_donations$donor_id), decreasing = T))
-range(train_donations$donation_received_date)
+head(sort(table(donations$donor_id), decreasing = T), n = 25)
+range(donations$donation_received_date)
 #Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further
+summary(donations$donor_id)
+by_donor_id <- donations %>% group_by(donor_id) %>%
+  summarize(count_donations = n(),
+            sum_donations = sum(donation_amount),
+            avg_amount = mean(donation_amount)) %>%
+  arrange(desc(count_donations)) 
+View(by_donor_id)
+summary(by_donor_id$count_donations)
+avg_over_tot_by_don_id <- by_donor_id %>%
+  ggplot(aes(count_donations, avg_amount)) +
+  geom_point()
+#what if I try with less outliers
+avg_over_tot_by_don_id_no_out <- by_donor_id %>%
+  filter(count_donations < 3000 & avg_amount < 12000) %>%
+  ggplot(aes(count_donations, avg_amount, alpha = 0.6)) +
+  geom_point()
+avg_over_tot_by_don_id_no_out
 
 #----
+#This will be here for whenever is the right time to split between training, testing and validation
+#set.seed(42)
+#train_donations <- sample_frac(donations, 0.9)
+#train_row_nrs <- as.numeric(rownames(train_donations))
+#nontrain_donations <- donations[-train_row_nrs,]
+#validate_donations <- sample_frac(nontrain_donations, 0.5)
+#validate_row_nrs <- as.numeric(rownames(validate_donations))
+#test_donations <- nontrain_donations[-validate_row_nrs,]
+
+
+
 #This below doesn't really work (yet?)
 #ggplot(donations, aes(x= project_id)) +
 #  geom_bar()
