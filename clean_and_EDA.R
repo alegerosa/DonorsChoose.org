@@ -87,7 +87,7 @@ test_donations <- nontrain_donations[-validate_row_nrs,]
 ##NOW WE CAN START EDA
 summary(donations)
 
-#First let's look at each variable (mostly) on their on
+#First let's look at each variable on their own (mostly) 
 #project_id
 head(sort(table(train_donations$project_id), decreasing = T))
 by_project <- train_donations %>% group_by(project_id) %>%
@@ -100,16 +100,55 @@ head(arrange(by_project, desc(sum_donations)))
 ggplot(by_project, aes(x = count_donations)) +
   geom_bar()+
   geom_rug()
+ggplot(by_project, aes(x = count_donations)) +
+  geom_histogram()+
+  geom_rug()
+ggplot(by_project, aes(x = count_donations)) +
+  geom_density()+
+  geom_rug()
+ggplot(by_project, aes(x = 1, y = count_donations)) +
+  geom_boxplot()
+
 #filtering to <100 to zoom in
 by_project %>% filter(count_donations < 75) %>%
   ggplot(aes(x = count_donations)) +
   geom_bar() +
   geom_rug()
+by_project %>% filter(count_donations < 75) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_histogram() +
+  geom_rug()
+by_project %>% filter(count_donations < 75) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_density() +
+  geom_rug()
+
+#the easier way to get this info
+
+nrow(filter(by_project, count_donations < 10))
+summary(by_project$count_donations)
 
 #donor_id
-head(sort(table(train_donations$donor_id), decreasing = T))
+head(sort(table(train_donations$donor_id), decreasing = T), n = 25)
 range(train_donations$donation_received_date)
 #Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further
+summary(train_donations$donor_id)
+by_donor_id <- train_donations %>% group_by(donor_id) %>%
+  summarize(count_donations = n(),
+            sum_donations = sum(donation_amount),
+            avg_amount = mean(donation_amount)) %>%
+  arrange(desc(count_donations)) 
+View(by_donor_id)
+summary(by_donor_id$count_donations)
+avg_over_tot_by_don_id <- by_donor_id %>%
+  ggplot(aes(count_donations, avg_amount)) +
+  geom_point()
+#what if I try with less outliers
+avg_over_tot_by_don_id_no_out <- by_donor_id %>%
+  filter(count_donations < 3000 & avg_amount < 12000) %>%
+  ggplot(aes(count_donations, avg_amount, alpha = 0.6)) +
+  geom_point()
+avg_over_tot_by_don_id_no_out
 
 #----
 #This below doesn't really work (yet?)
