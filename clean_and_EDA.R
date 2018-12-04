@@ -129,8 +129,46 @@ by_project %>% filter(count_donations <= 10) %>%
 #Not really.
 
 summary(by_project$sum_donations)
-#Wow, 75% of projects got $390 or less. Now it would be interesting to see how this compares to projects' goals (Does this reflect that most projects are relatively small, or does it show that only a small minority of projects get funded?)
+ggplot(by_project, aes(x = sum_donations)) +
+  geom_density()+
+  geom_rug()
+#zoomed in
+ggplot(by_project, aes(x = sum_donations)) +
+  geom_density()+
+  geom_rug() +
+  coord_cartesian(xlim = c(0, 10000))
 
+#Wow, 75% of projects got $390 or less. Now it would be interesting to see how this compares to projects' goals (Does this reflect that most projects are relatively small, or does it show that only a small minority of projects get funded?)
+summary(projects$project_cost)
+ggplot(projects, aes(x = project_cost)) +
+  geom_density()+
+  geom_rug()
+#zoomed in
+ggplot(projects, aes(x = project_cost)) +
+  geom_density()+
+  geom_rug() +
+  coord_cartesian(xlim = c(0, 10000))
+
+top_100_proj <- by_project %>%
+  arrange(desc(sum_donations)) %>%
+  mutate(perc_of_total = sum_donations/sum(sum_donations),
+         cumm_perc = cumsum(perc_of_total)) %>%
+  top_n(100, sum_donations)
+#So, it would seem like only a minority of the projects get fully funded. It will be interesting to continue to explore this. But now, moving on.
+
+
+pareto_table_by_project <- by_project %>%
+  arrange(desc(sum_donations)) %>%
+  mutate(perc_of_total = sum_donations/sum(sum_donations),
+         cumm_perc = cumsum(perc_of_total),
+         rank = percent_rank(cumm_perc))
+pareto_chart_by_project <- ggplot(pareto_table_by_project, aes(x = rank, y = cumm_perc)) +
+  geom_line() +
+  labs(title = "Pareto Chart By Project", x = "% Rank of project", y = "% of Cummulative donations")
+pareto_chart_by_project
+
+
+?rank
 #donor_id
 head(sort(table(donations$donor_id), decreasing = T), n = 25)
 range(donations$donation_received_date)
