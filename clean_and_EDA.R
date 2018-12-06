@@ -1,4 +1,6 @@
 library(tidyverse)
+library(gridExtra)
+library(lubridate)
 
 #First, we load the data 
 ## In order to work with all the dataframes in the directory, we'll create a vector with all their paths and then use lapply and read_csv to load all of them at once
@@ -156,7 +158,6 @@ top_100_proj <- by_project %>%
   top_n(100, sum_donations)
 #So, it would seem like only a minority of the projects get fully funded. It will be interesting to continue to explore this. But now, moving on.
 
-
 pareto_table_by_project <- by_project %>%
   arrange(desc(sum_donations)) %>%
   mutate(perc_of_total = sum_donations/sum(sum_donations),
@@ -168,11 +169,10 @@ pareto_chart_by_project <- ggplot(pareto_table_by_project, aes(x = rank, y = cum
 pareto_chart_by_project
 
 
-?rank
 #donor_id
 head(sort(table(donations$donor_id), decreasing = T), n = 25)
 range(donations$donation_received_date)
-#Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further
+#Why are there donors with thousands of donations? (Like 1000+donations per year) We'll need to look into these further. For now, I am assuming that these donor_ids aggregate group donations or automated donations (say, by a company that rounds up transactions or employeed contributions, etc.) and that for summary purposes they are just as valid as any other.
 summary(donations$donor_id)
 by_donor_id <- donations %>% group_by(donor_id) %>%
   summarize(count_donations = n(),
@@ -180,17 +180,101 @@ by_donor_id <- donations %>% group_by(donor_id) %>%
             avg_amount = mean(donation_amount)) %>%
   arrange(desc(count_donations)) 
 View(by_donor_id)
-summary(by_donor_id$count_donations)
+
 avg_over_tot_by_don_id <- by_donor_id %>%
   ggplot(aes(count_donations, avg_amount)) +
   geom_point()
-#what if I try with less outliers
+avg_over_tot_by_don_id
+#what if I try with less outliers (a way of zooming in)
 avg_over_tot_by_don_id_no_out <- by_donor_id %>%
-  filter(count_donations < 3000 & avg_amount < 12000) %>%
+  filter(count_donations < 1000 & avg_amount < 1000) %>%
   ggplot(aes(count_donations, avg_amount, alpha = 0.6)) +
   geom_point()
 avg_over_tot_by_don_id_no_out
 
+#Let's see what the distribution of # of donations per donor looks like
+summary(by_donor_id$count_donations)
+#Median is 1, meaning more than half the donors have given only once.
+table(by_donor_id$count_donations)[1]/nrow(by_donor_id)
+#So 73% of donors are first timers  
+ggplot(by_donor_id, aes(x = count_donations)) +
+  geom_density(aes(y = ..scaled..))+
+  geom_rug()
+#Let's see the same distribution, but only taking into account those who donated more than once. I'll also zoom in to see only up to 5000 donations per donor 
+by_donor_id %>% filter(count_donations > 1) %>%
+  ggplot(aes(x = count_donations)) +
+  geom_density(aes(y = ..scaled..)) +
+  geom_rug() +
+  coord_cartesian(xlim = c(0, 5000))
+#There's more to explore about how first time and 2nd time donors and about retention. We'll stay here for now and see the pareto chart
+
+summary(by_donor_id, sum_donations)
+ggplot(by_donor_id, aes(x = count_donations, y = sum_donations, alpha = 0.6)) +
+  geom_point()
+ggplot(by_donor_id, aes(x = sum_donations)) +
+  geom_density(aes(y = ..scaled..)) +
+  geom_rug() +
+  coord_cartesian(xlim = c(0,25000))
+table(by_donor_id$sum_donations)
+quantile(by_donor_id$sum_donations, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .95, .99, .9999))
+quantile(by_donor_id$count_donations, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .95, .99, .9999))
+pareto_table_by_donor <- by_donor_id %>%
+  arrange(desc(sum_donations)) %>%
+  mutate(perc_of_total = sum_donations/sum(sum_donations),
+         cumm_perc = cumsum(perc_of_total),
+         rank = percent_rank(cumm_perc))
+pareto_chart_by_donor <- ggplot(pareto_table_by_donor, aes(x = rank, y = cumm_perc)) +
+  geom_line() +
+  labs(title = "Pareto Chart By Donor", x = "% Rank of donor", y = "% of Cummulative donations")
+pareto_chart_by_donor
+grid.arrange(pareto_chart_by_donor, pareto_chart_by_project, ncol = 2)
+
+#for my next chart I'll add a column to donations (and I'll try this two different ways bc I'm testing if donor_cart_sequence means what I think it means)
+
+ids_of_onetime_donors <- select(filter(by_donor_id, count_donations == 1), donor_id)
+ids_of_repeat_donors <- select(filter(by_donor_id, count_donations > 1), donor_id)
+
+donations <- donations %>%
+  mutate(
+    first_donation = case_when(
+      donor_cart_sequence == 1 ~ "first",
+      donor_cart_sequence > 1 ~ "repeat"),
+    one_and_done = case_when(
+      as.character(donor_id) %in% pull(ids_of_onetime_donors) ~ "One-and-done donor",
+      as.character(donor_id) %in% pull(ids_of_repeat_donors) ~ "Recurrent donor")
+    )
+
+chart_first_donation <- donations %>% filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount, fill = first_donation)) +
+  geom_bar(stat = "sum")
+chart_first_donation
+
+chart_one_done <- donations %>% filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount, fill = one_and_done)) +
+  geom_bar(stat = "sum")
+chart_one_done
+
+
+#NOTE: would be interesting to do the same but by number of donors.
+
+
+
+
+
+
+quantile(donations$donor_cart_sequence, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .99, .999))
+year(donations$donation_received_date)
+
+
+##THIS IS A LOT OF TEMP STEPS I USED TO GET THE "ONE-AND-DONE" METRIC, AND IT STILL HAS ISSUES, SO LEAVING HERE FOR NOW
+onetime_vector <- donationsdonoridchar %in% pull(ids_of_onetime_donors)
+summary(onetime_vector)
+View(donations$donor_id)
+View(ids_of_onetime_donors)
+donationsdonoridchar <- as.character(donations$donor_id)
+as.character(donations$donor_id[1679253]) == ids_of_onetime_donors[1,]
+class(ids_of_onetime_donors)
+pull(ids_of_onetime_donors)
 #----
 #This will be here for whenever is the right time to split between training, testing and validation
 #set.seed(42)
