@@ -1,0 +1,82 @@
+---
+title: 'Fundraising Analytics on DonorsChoose.org data'
+author: "Alejandra Gerosa"
+date: "12/7/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(lubridate)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## The project
+
+This project analyses [DonorsChoose.org](www.donorschoose.org)'s donation data as released in their mid-2018 [Kaggle competition](https://www.kaggle.com/donorschoose/io). For this document, I set out to summarize a few key insights regarding their fundrasing performance between 2013 and 2017. For a more detailed approach, you can dig into the full code of my ongoing exploration of the dataset [here](https://github.com/alegerosa/DonorsChoose.org). 
+
+```{r include=FALSE}
+df_paths <- list.files("data", full.names = TRUE)
+list_of_dfs <- lapply(df_paths, read_csv)
+df_names <- tolower(basename(substr(df_paths, 1, nchar(df_paths)-4)))
+names(list_of_dfs) <- df_names
+for (i in 1:length(list_of_dfs)) {
+  list_of_dfs[[i]] <- rename_all(list_of_dfs[[i]], funs(gsub(" ", "_", .)))
+  list_of_dfs[[i]] <- rename_all(list_of_dfs[[i]], funs(tolower(.)))
+} 
+list2env(list_of_dfs, .GlobalEnv)
+donations$donation_included_optional_donation <- donations$donation_included_optional_donation == "Yes"
+donors$donor_is_teacher <- donors$donor_is_teacher == "Yes"
+projects$project_type <- as.factor(projects$project_type)
+projects$project_grade_level_category <- as.factor(projects$project_grade_level_category)
+projects$project_resource_category <- as.factor(projects$project_resource_category)
+projects$project_current_status <- as.factor(projects$project_current_status)
+schools$school_metro_type <- as.factor(schools$school_metro_type)
+teachers$teacher_prefix <- as.factor(teachers$teacher_prefix)
+donations_duplicates <- donations %>%
+  filter(duplicated(donation_id) | duplicated(donation_id, fromLast = TRUE)) %>%
+  arrange(donation_id)
+donations <- donations %>% filter(!duplicated(donation_id))
+by_project <- donations %>% group_by(project_id) %>%
+  summarize(count_donations = n(),
+            sum_donations = sum(donation_amount),
+            avg_amount = mean(donation_amount)) %>%
+  arrange(desc(count_donations)) 
+by_donor_id <- donations %>% group_by(donor_id) %>%
+  summarize(count_donations = n(),
+            sum_donations = sum(donation_amount),
+            avg_amount = mean(donation_amount)) %>%
+  arrange(desc(count_donations)) 
+
+ids_of_onetime_donors <- select(filter(by_donor_id, count_donations == 1), donor_id)
+ids_of_repeat_donors <- select(filter(by_donor_id, count_donations > 1), donor_id)
+
+donations <- donations %>%
+  mutate(
+    first_donation = case_when(
+      donor_cart_sequence == 1 ~ "first",
+      donor_cart_sequence > 1 ~ "repeat"),
+    one_and_done = case_when(
+      as.character(donor_id) %in% pull(ids_of_onetime_donors) ~ "One-and-done donor",
+      as.character(donor_id) %in% pull(ids_of_repeat_donors) ~ "Recurrent donor")
+    )
+```
+
+## Key Insights
+* Donations are growing every year, and most donations come from recurring donors.
+* Top 10 states account for 56% of donations, and top 3 states account for ~30%.
+* December, August and September account for ~35% of donations
+* Most donors have given only once.
+* A lot of projects don't get funded
+
+## Donations are growing
+
+```{r}
+donations %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount, fill = first_donation)) +
+  geom_bar(stat = "sum")
+```
+

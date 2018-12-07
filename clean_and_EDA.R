@@ -254,13 +254,7 @@ chart_one_done <- donations %>% filter(year(donation_received_date) > 2012 & yea
   geom_bar(stat = "sum")
 chart_one_done
 
-
 #NOTE: would be interesting to do the same but by number of donors.
-
-
-
-
-
 
 quantile(donations$donor_cart_sequence, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .99, .999))
 year(donations$donation_received_date)
@@ -275,6 +269,40 @@ donationsdonoridchar <- as.character(donations$donor_id)
 as.character(donations$donor_id[1679253]) == ids_of_onetime_donors[1,]
 class(ids_of_onetime_donors)
 pull(ids_of_onetime_donors)
+
+#Analysis for my summary of key fundraising insights
+donations_plus <- donations %>%
+  left_join(projects, by = "project_id") %>%
+  left_join(donors, by = "donor_id") %>%
+  left_join(schools, by = "school_id") %>%
+  left_join(teachers, by = "teacher_id")
+
+#Top states by donation amount
+top_10_school_states <- donations_plus %>%
+  group_by(school_state) %>%
+  summarize(donation_value = sum(donation_amount),
+            perc_of_total = sum(donation_amount)/sum(donations_plus$donation_amount)) %>%
+  arrange(desc(perc_of_total)) %>%
+  mutate(cumm_perc = cumsum(perc_of_total)) %>%
+  top_n(10, perc_of_total)
+
+#Donations by month       
+by_month <- donations_plus %>%
+  group_by(month(donation_received_date)) %>%
+  summarize(donation_value = sum(donation_amount),
+            perc_of_total = sum(donation_amount)/sum(donations_plus$donation_amount)) %>%
+  arrange(desc(perc_of_total)) %>%
+  mutate(cumm_perc = cumsum(perc_of_total))
+
+
+ggplot(donations, aes(x = donation_amount)) +
+  geom_histogram(binwidth = 5) +
+  geom_rug()
+
+
+
+
+
 #----
 #This will be here for whenever is the right time to split between training, testing and validation
 #set.seed(42)
