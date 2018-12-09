@@ -1,6 +1,8 @@
 library(tidyverse)
 library(gridExtra)
 library(lubridate)
+library(scales)
+library(cowplot)
 
 #First, we load the data 
 ## In order to work with all the dataframes in the directory, we'll create a vector with all their paths and then use lapply and read_csv to load all of them at once
@@ -238,7 +240,7 @@ donations <- donations %>%
   mutate(
     first_donation = case_when(
       donor_cart_sequence == 1 ~ "first",
-      donor_cart_sequence > 1 ~ "repeat"),
+      donor_cart_sequence > 1 ~ "recurrent"),
     one_and_done = case_when(
       as.character(donor_id) %in% pull(ids_of_onetime_donors) ~ "One-and-done donor",
       as.character(donor_id) %in% pull(ids_of_repeat_donors) ~ "Recurrent donor")
@@ -277,7 +279,69 @@ donations_plus <- donations %>%
   left_join(schools, by = "school_id") %>%
   left_join(teachers, by = "teacher_id")
 
-#Top states by donation amount
+#Revenue and growth trends by year
+revenue_per_year_plot <- donations %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = "pink")) +
+  geom_bar(stat = "sum") +
+  labs(y = "Total donation value (in millions)") +
+  theme(legend.position = "none",
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = dollar_format())
+yearly_growth_table <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  group_by(year = year(donation_received_date)) %>%
+  summarize(total = sum(donation_amount)) %>%
+  mutate(perc_growth = (total/lag(total))-1)
+cagr <- percent(mean(yearly_growth_table$perc_growth, na.rm = TRUE))
+perc_growth_per_year_plot <- yearly_growth_table %>%
+  ggplot(aes(x = year, y = perc_growth)) +
+  geom_line() +
+  labs(y = "% growth") +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(0,1))
+
+plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
+
+#Revenue and retention trends per year
+revenue_per_year_per_first_plot <- donations %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
+  geom_bar(stat = "sum") +
+  labs(y = "Total donation value (in millions)") +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = dollar_format())
+yearly_retained_table <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  group_by(year = year(donation_received_date), first_donation) %>%
+  summarize(total = sum(donation_amount)) %>%
+  spread(first_donation, total) %>%
+  mutate(total = first + recurrent) %>%
+  ungroup() %>%
+  mutate(perc_retained = recurrent/lag(total))
+avg_retention <- percent(mean(yearly_retained_table$perc_retained, na.rm = TRUE))
+perc_retained_per_year_plot <- yearly_retained_table %>%
+  ggplot(aes(x = year, y = perc_retained)) +
+  geom_line() +
+  labs(y = "% retained") +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(0, 1))
+plot_grid(perc_retained_per_year_plot, revenue_per_year_per_first_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
+
+perc_retained_per_year_plot
+revenue_per_year_per_first_plot
+
+
+ #Top states by donation amount
 top_10_school_states <- donations_plus %>%
   group_by(school_state) %>%
   summarize(donation_value = sum(donation_amount),
@@ -297,8 +361,14 @@ by_month <- donations_plus %>%
 
 ggplot(donations, aes(x = donation_amount)) +
   geom_histogram(binwidth = 5) +
-  geom_rug()
+  geom_rug() +
+  coord_cartesian(xlim = c(0,5000))
 
+quantile(donations_plus$donation_amount, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .99, .999))
+
+ggplot(donations_plus, aes(x = first_donation, y = donation_amount)) +
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 100))
 
 
 
