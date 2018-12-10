@@ -280,10 +280,10 @@ donations_plus <- donations %>%
   left_join(teachers, by = "teacher_id")
 
 #Revenue and growth trends by year
-revenue_per_year_plot <- donations %>%
+revenue_per_year_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = "pink")) +
-  geom_bar(stat = "sum") +
+  geom_col() +
   labs(y = "Total donation value (in millions)") +
   theme(legend.position = "none",
         axis.title.x = element_blank()) +
@@ -308,10 +308,10 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 
 #Revenue and retention trends per year
-revenue_per_year_per_first_plot <- donations %>%
+revenue_per_year_per_first_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
-  geom_bar(stat = "sum") +
+  geom_col() +
   labs(y = "Total donation value (in millions)") +
   theme(legend.position = "bottom",
         axis.title.x = element_blank()) +
@@ -340,8 +340,10 @@ plot_grid(perc_retained_per_year_plot, revenue_per_year_per_first_plot, align = 
 perc_retained_per_year_plot
 revenue_per_year_per_first_plot
 
+yearly_growth_table %>% ggplot(aes(x = year, y = total)) +
+  geom_col()
 
- #Top states by donation amount
+#Top states by donation amount
 top_10_school_states <- donations_plus %>%
   group_by(school_state) %>%
   summarize(donation_value = sum(donation_amount),

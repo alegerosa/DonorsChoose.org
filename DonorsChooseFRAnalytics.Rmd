@@ -73,7 +73,7 @@ donations_plus <- donations %>%
 revenue_per_year_plot <- donations %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = "pink")) +
-  geom_bar(stat = "sum") +
+  geom_col() +
   labs(y = "Total donation value (in millions)") +
   theme(legend.position = "none",
         axis.title.x = element_blank()) +
@@ -98,7 +98,7 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
 revenue_per_year_per_first_plot <- donations %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
-  geom_bar(stat = "sum") +
+  geom_col() +
   labs(y = "Total donation value (in millions)") +
   theme(legend.position = "bottom",
         axis.title.x = element_blank()) +
