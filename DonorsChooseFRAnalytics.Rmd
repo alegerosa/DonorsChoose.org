@@ -93,13 +93,13 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
         axis.text.x = element_blank(),
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  coord_cartesian(ylim = c(0,1))
+  coord_cartesian(ylim = c(0,.5))
 
 revenue_per_year_per_first_plot <- donations %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
   geom_col() +
-  labs(y = "Total donation value (in millions)") +
+  labs(y = "Total donation value (in millions)", fill = "From a first-time donor?") +
   theme(legend.position = "bottom",
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = dollar_format())
@@ -121,15 +121,14 @@ perc_retained_per_year_plot <- yearly_retained_table %>%
         axis.text.x = element_blank(),
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  coord_cartesian(ylim = c(0, 1))
+  coord_cartesian(ylim = c(.5, 1))
 ```
 
 ## Key Insights
 * Donations are growing by an average of `r cagr` every year, and most donations come from recurring donors.
 * Top 10 states account for 56% of donations, and top 3 states account for ~30%.
-* December, August and September account for ~35% of donations
+* December, August and September account for ~35% of donations.
 * Most donors have given only once.
-* A lot of projects don't get funded
 
 ## On average, donations are growing by `r cagr` each year
 
@@ -139,6 +138,9 @@ plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 
 
 ```
 
+The good news is that the total amount raised for teacher's projects is growing every year at a rate of almost 25%. The somewhat less positive news is that growth is slowing down, with only 16% in 2017. How worrisome this is, if at all, depends on the expectation and intention of the organization. Was this a surprise or is it an expected tapering off, a stabilization following a soar? What was the growth goal? Were there growth-oriented actions that performed below earlier years' results? If so, can we pinpoint the reasons?. In any case, if the goal is to maintain 25% growth, however, further action will be needed.
+
+Personally, when I look at the health of an organzation's fundraising base there's a question that I care about much more than how fast we are growing. That is: Are our donors coming back?
 
 
 ```{r}

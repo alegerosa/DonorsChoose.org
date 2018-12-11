@@ -303,7 +303,7 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
         axis.text.x = element_blank(),
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  coord_cartesian(ylim = c(0,1))
+  coord_cartesian(ylim = c(0,.5))
 
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 
@@ -312,7 +312,7 @@ revenue_per_year_per_first_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
   geom_col() +
-  labs(y = "Total donation value (in millions)") +
+  labs(y = "Total donation value (in millions)", fill = "From a first-time donor?") +
   theme(legend.position = "bottom",
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = dollar_format())
@@ -334,7 +334,7 @@ perc_retained_per_year_plot <- yearly_retained_table %>%
         axis.text.x = element_blank(),
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  coord_cartesian(ylim = c(0, 1))
+  coord_cartesian(ylim = c(.5, 1))
 plot_grid(perc_retained_per_year_plot, revenue_per_year_per_first_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 
 perc_retained_per_year_plot
