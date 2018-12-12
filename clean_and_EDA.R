@@ -343,6 +343,136 @@ revenue_per_year_per_first_plot
 yearly_growth_table %>% ggplot(aes(x = year, y = total)) +
   geom_col()
 
+
+#This was all good for a quick(er) calculation, but now let's set up the dataset to enable us to properly track retention rates over time. This one will be yearly
+
+donors_2012 <- donations_plus %>%
+  filter(year(donation_received_date) == 2012) %>%
+  select(donor_id)
+donors_2013 <- donations_plus %>%
+  filter(year(donation_received_date) == 2013) %>%
+  select(donor_id)
+donors_2014 <- donations_plus %>%
+  filter(year(donation_received_date) == 2014) %>%
+  select(donor_id)
+donors_2015 <- donations_plus %>%
+  filter(year(donation_received_date) == 2015) %>%
+  select(donor_id)
+donors_2016 <- donations_plus %>%
+  filter(year(donation_received_date) == 2016) %>%
+  select(donor_id)
+donors_2017 <- donations_plus %>%
+  filter(year(donation_received_date) == 2017) %>%
+  select(donor_id)
+donors_2018 <- donations_plus %>%
+  filter(year(donation_received_date) == 2018) %>%
+  select(donor_id)
+
+
+donations_plus <- donations_plus %>%
+  mutate(donor_gave_last_year = case_when(
+    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013),
+    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014),
+    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015),
+    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016),
+    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017)))
+
+summary(donations_plus$donor_gave_last_year)
+
+donations_plus <- donations_plus %>%
+  mutate(donor_gave_ever_before = case_when(
+    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
+
+summary(donations_plus$donor_gave_ever_before)
+
+donations_plus <- donations_plus %>%
+  mutate(retention_status = case_when(
+    donor_gave_last_year ~ "Retained donor",
+    !donor_gave_last_year & donor_gave_ever_before ~ "Reactivated donor",
+    !donor_gave_ever_before ~ "New donor"
+  ))
+table(donations_plus$retention_status)
+
+#New retention charts
+revenue_per_year_per_retained <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = retention_status)) +
+  geom_col() +
+  labs(y = "Total donation value (in millions)", fill = "Donor gave in the year prior?") +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank()) +
+  scale_y_continuous(labels = dollar_format())
+yearly_proper_retained_table <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  group_by(year = year(donation_received_date), donor_gave_last_year) %>%
+  summarize(total = sum(donation_amount)) %>%
+  spread(donor_gave_last_year, total) %>%
+  mutate(total = sum(c(`FALSE`,`TRUE`,`<NA>`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(perc_retained = `TRUE`/lag(total))
+avg_retention <- percent(mean(yearly_proper_retained_table$perc_retained, na.rm = TRUE))
+perc_proper_retained_per_year_plot <- yearly_proper_retained_table %>%
+  ggplot(aes(x = year, y = perc_retained)) +
+  geom_line() +
+  labs(y = "Retention Rate") +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), breaks = c(.3, .6)) +
+  coord_cartesian(ylim = c(.3,.6)) +
+  geom_text(aes(label = percent(perc_retained)), position = position_dodge(), vjust = -1.5)
+plot_grid(perc_proper_retained_per_year_plot, revenue_per_year_per_retained, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
+perc_proper_retained_per_year_plot
+#let's do a retention table manually and see how it compares (for double checking and trying other approaches)
+manual_retention_table <- donations_plus %>%
+  group_by(year(donation_received_date)) %>%
+  summarize(total_donations = sum(donation_amount),
+          total_donors = n_distinct(donor_id))
+
+retained_2014 <- donations_plus %>%
+  filter(as.character(donor_id) %in% pull(donors_2013), year(donation_received_date) == 2014) %>%
+  summarise(sum_donation_value = sum(donation_amount),
+            nr_donors = n_distinct(donor_id))
+
+retained_2015 <- donations_plus %>%
+  filter(as.character(donor_id) %in% pull(donors_2014), year(donation_received_date) == 2015) %>%
+  summarise(sum_donation_value = sum(donation_amount),
+            nr_donors = n_distinct(donor_id))
+
+retained_2016 <- donations_plus %>%
+  filter(as.character(donor_id) %in% pull(donors_2015), year(donation_received_date) == 2016) %>%
+  summarise(sum_donation_value = sum(donation_amount),
+            nr_donors = n_distinct(donor_id))
+
+retained_2017 <- donations_plus %>%
+  filter(as.character(donor_id) %in% pull(donors_2016), year(donation_received_date) == 2017) %>%
+  summarise(sum_donation_value = sum(donation_amount),
+            nr_donors = n_distinct(donor_id))
+
+manual_retention_table$donations_retained <- as.numeric(c("","", retained_2014$sum_donation_value,retained_2015$sum_donation_value,retained_2016$sum_donation_value, retained_2017$sum_donation_value, ""))
+
+manual_retention_table$donors_retained <- as.numeric(c("","", retained_2014$nr_donors,retained_2015$nr_donors,retained_2016$nr_donors, retained_2017$nr_donors, ""))
+
+manual_retention_table <- manual_retention_table %>%
+  mutate(value_retention = donations_retained/lag(total_donations),
+         donor_retention = donors_retained/lag(total_donors))
+
+#And now for final sanity check: get a random sample of 5 donations so I can manually check that it's imputed correctly
+sample <- sample_n(donations_plus, 5) %>%
+  select(donor_id, donation_received_date, donor_gave_last_year)
+sample
+sample2 <- filter(donations_plus, donor_id %in% sample$donor_id) %>%
+  select("donor_id", "donation_received_date", "donor_gave_last_year") %>%
+  arrange(donor_id)
+
 #Top states by donation amount
 top_10_school_states <- donations_plus %>%
   group_by(school_state) %>%
