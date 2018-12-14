@@ -302,9 +302,10 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank()) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  coord_cartesian(ylim = c(0,.5))
-
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), breaks = c(0, .25, .5)) +
+  coord_cartesian(ylim = c(0,.5)) +
+  geom_text(aes(label = percent(perc_growth)), position = position_dodge(), vjust = -1.5)
+perc_growth_per_year_plot
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 
 #Revenue and retention trends per year
@@ -346,6 +347,12 @@ yearly_growth_table %>% ggplot(aes(x = year, y = total)) +
 
 #This was all good for a quick(er) calculation, but now let's set up the dataset to enable us to properly track retention rates over time. This one will be yearly
 
+#The first donor list identifies donors whose donors whose donor cart sequence starts at a number higher than one, because that means that those donors have given before the data starts, meaning on or before 2012
+
+donors_before_data <- donations_plus %>%
+  group_by(donor_id) %>%
+  filter(min(donor_cart_sequence) > 1) %>%
+  select(donor_id)
 donors_2012 <- donations_plus %>%
   filter(year(donation_received_date) == 2012) %>%
   select(donor_id)
@@ -382,14 +389,16 @@ summary(donations_plus$donor_gave_last_year)
 
 donations_plus <- donations_plus %>%
   mutate(donor_gave_ever_before = case_when(
-    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
+    year(donation_received_date) == 2012 ~ as.character(donor_id) %in% pull(donors_before_data),
+    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
 
 summary(donations_plus$donor_gave_ever_before)
+
 
 donations_plus <- donations_plus %>%
   mutate(retention_status = case_when(
@@ -414,7 +423,7 @@ yearly_proper_retained_table <- donations_plus %>%
   group_by(year = year(donation_received_date), donor_gave_last_year) %>%
   summarize(total = sum(donation_amount)) %>%
   spread(donor_gave_last_year, total) %>%
-  mutate(total = sum(c(`FALSE`,`TRUE`,`<NA>`), na.rm = TRUE)) %>%
+  mutate(total = sum(c(`FALSE`,`TRUE`), na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(perc_retained = `TRUE`/lag(total))
 avg_retention <- percent(mean(yearly_proper_retained_table$perc_retained, na.rm = TRUE))
@@ -472,6 +481,18 @@ sample
 sample2 <- filter(donations_plus, donor_id %in% sample$donor_id) %>%
   select("donor_id", "donation_received_date", "donor_gave_last_year") %>%
   arrange(donor_id)
+
+#Also, Why are the retentained+reactivated sums soooo different from the first or repeat donation results? One explanation could be that there's a lot of 'hidden reactivation' because we don't have data from earlier years, so let's see what the minimum donation cart sequences look like.
+another_sanity_check <- donations_plus %>%
+  group_by(donor_id) %>%
+  summarise(minumum_don_cart_seq = min(donor_cart_sequence)) %>%
+  group_by(minumum_don_cart_seq) %>%
+  summarise(count = n())
+head(another_sanity_check, 100)
+another_sanity_check[1,2]/sum(another_sanity_check$count)
+table(another_sanity_check)
+
+?table()
 
 #Top states by donation amount
 top_10_school_states <- donations_plus %>%
