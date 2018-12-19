@@ -279,6 +279,73 @@ donations_plus <- donations %>%
   left_join(schools, by = "school_id") %>%
   left_join(teachers, by = "teacher_id")
 
+#Adding the required columns to be able to create useful Retention Rate charts and calculations.
+
+#The first donor list identifies donors whose donors whose donor cart sequence starts at a number higher than one, because that means that those donors have given before the data starts, meaning on or before 2012
+
+donors_before_data <- donations_plus %>%
+  group_by(donor_id) %>%
+  filter(min(donor_cart_sequence) > 1) %>%
+  select(donor_id)
+donors_2012 <- donations_plus %>%
+  filter(year(donation_received_date) == 2012) %>%
+  select(donor_id)
+donors_2013 <- donations_plus %>%
+  filter(year(donation_received_date) == 2013) %>%
+  select(donor_id)
+donors_2014 <- donations_plus %>%
+  filter(year(donation_received_date) == 2014) %>%
+  select(donor_id)
+donors_2015 <- donations_plus %>%
+  filter(year(donation_received_date) == 2015) %>%
+  select(donor_id)
+donors_2016 <- donations_plus %>%
+  filter(year(donation_received_date) == 2016) %>%
+  select(donor_id)
+donors_2017 <- donations_plus %>%
+  filter(year(donation_received_date) == 2017) %>%
+  select(donor_id)
+donors_2018 <- donations_plus %>%
+  filter(year(donation_received_date) == 2018) %>%
+  select(donor_id)
+
+
+donations_plus <- donations_plus %>%
+  mutate(donor_gave_last_year = case_when(
+    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013),
+    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014),
+    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015),
+    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016),
+    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017)))
+
+summary(donations_plus$donor_gave_last_year)
+
+donations_plus <- donations_plus %>%
+  mutate(donor_gave_ever_before = case_when(
+    year(donation_received_date) == 2012 ~ as.character(donor_id) %in% pull(donors_before_data),
+    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
+    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
+
+summary(donations_plus$donor_gave_ever_before)
+
+
+donations_plus <- donations_plus %>%
+  mutate(retention_status = case_when(
+    donor_gave_last_year ~ "Retained donor",
+    !donor_gave_last_year & donor_gave_ever_before ~ "Reactivated donor",
+    !donor_gave_ever_before ~ "New donor"
+  ))
+table(donations_plus$retention_status)
+
+
+
+
+
 #Revenue and growth trends by year
 revenue_per_year_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
@@ -345,68 +412,8 @@ yearly_growth_table %>% ggplot(aes(x = year, y = total)) +
   geom_col()
 
 
-#This was all good for a quick(er) calculation, but now let's set up the dataset to enable us to properly track retention rates over time. This one will be yearly
+#This was all good for a quick(er) calculation, but now we've already set up the dataset to enable us to properly track (yearly) retention rates over time. This one will be yearly
 
-#The first donor list identifies donors whose donors whose donor cart sequence starts at a number higher than one, because that means that those donors have given before the data starts, meaning on or before 2012
-
-donors_before_data <- donations_plus %>%
-  group_by(donor_id) %>%
-  filter(min(donor_cart_sequence) > 1) %>%
-  select(donor_id)
-donors_2012 <- donations_plus %>%
-  filter(year(donation_received_date) == 2012) %>%
-  select(donor_id)
-donors_2013 <- donations_plus %>%
-  filter(year(donation_received_date) == 2013) %>%
-  select(donor_id)
-donors_2014 <- donations_plus %>%
-  filter(year(donation_received_date) == 2014) %>%
-  select(donor_id)
-donors_2015 <- donations_plus %>%
-  filter(year(donation_received_date) == 2015) %>%
-  select(donor_id)
-donors_2016 <- donations_plus %>%
-  filter(year(donation_received_date) == 2016) %>%
-  select(donor_id)
-donors_2017 <- donations_plus %>%
-  filter(year(donation_received_date) == 2017) %>%
-  select(donor_id)
-donors_2018 <- donations_plus %>%
-  filter(year(donation_received_date) == 2018) %>%
-  select(donor_id)
-
-
-donations_plus <- donations_plus %>%
-  mutate(donor_gave_last_year = case_when(
-    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013),
-    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014),
-    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015),
-    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016),
-    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017)))
-
-summary(donations_plus$donor_gave_last_year)
-
-donations_plus <- donations_plus %>%
-  mutate(donor_gave_ever_before = case_when(
-    year(donation_received_date) == 2012 ~ as.character(donor_id) %in% pull(donors_before_data),
-    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
-
-summary(donations_plus$donor_gave_ever_before)
-
-
-donations_plus <- donations_plus %>%
-  mutate(retention_status = case_when(
-    donor_gave_last_year ~ "Retained donor",
-    !donor_gave_last_year & donor_gave_ever_before ~ "Reactivated donor",
-    !donor_gave_ever_before ~ "New donor"
-  ))
-table(donations_plus$retention_status)
 
 #New retention charts
 revenue_per_year_per_retained <- donations_plus %>%

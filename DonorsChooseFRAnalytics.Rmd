@@ -20,56 +20,11 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 This project analyses [DonorsChoose.org](www.donorschoose.org)'s donation data as released in their mid-2018 [Kaggle competition](https://www.kaggle.com/donorschoose/io). For this writeup, I set out to summarize a few key insights regarding their fundrasing performance between 2013 and 2017. For a more detailed approach, you can dig into the full code of my ongoing exploration of the dataset [here](https://github.com/alegerosa/DonorsChoose.org). 
 
 ```{r include=FALSE}
-df_paths <- list.files("data", full.names = TRUE)
-list_of_dfs <- lapply(df_paths, read_csv)
-df_names <- tolower(basename(substr(df_paths, 1, nchar(df_paths)-4)))
-names(list_of_dfs) <- df_names
-for (i in 1:length(list_of_dfs)) {
-  list_of_dfs[[i]] <- rename_all(list_of_dfs[[i]], funs(gsub(" ", "_", .)))
-  list_of_dfs[[i]] <- rename_all(list_of_dfs[[i]], funs(tolower(.)))
-} 
-list2env(list_of_dfs, .GlobalEnv)
-donations$donation_included_optional_donation <- donations$donation_included_optional_donation == "Yes"
-donors$donor_is_teacher <- donors$donor_is_teacher == "Yes"
-projects$project_type <- as.factor(projects$project_type)
-projects$project_grade_level_category <- as.factor(projects$project_grade_level_category)
-projects$project_resource_category <- as.factor(projects$project_resource_category)
-projects$project_current_status <- as.factor(projects$project_current_status)
-schools$school_metro_type <- as.factor(schools$school_metro_type)
-teachers$teacher_prefix <- as.factor(teachers$teacher_prefix)
-donations_duplicates <- donations %>%
-  filter(duplicated(donation_id) | duplicated(donation_id, fromLast = TRUE)) %>%
-  arrange(donation_id)
-donations <- donations %>% filter(!duplicated(donation_id))
-by_project <- donations %>% group_by(project_id) %>%
-  summarize(count_donations = n(),
-            sum_donations = sum(donation_amount),
-            avg_amount = mean(donation_amount)) %>%
-  arrange(desc(count_donations)) 
-by_donor_id <- donations %>% group_by(donor_id) %>%
-  summarize(count_donations = n(),
-            sum_donations = sum(donation_amount),
-            avg_amount = mean(donation_amount)) %>%
-  arrange(desc(count_donations)) 
-
-ids_of_onetime_donors <- select(filter(by_donor_id, count_donations == 1), donor_id)
-ids_of_repeat_donors <- select(filter(by_donor_id, count_donations > 1), donor_id)
-
-donations <- donations %>%
-  mutate(
-    first_donation = case_when(
-      donor_cart_sequence == 1 ~ "first",
-      donor_cart_sequence > 1 ~ "recurrent"),
-    one_and_done = case_when(
-      as.character(donor_id) %in% pull(ids_of_onetime_donors) ~ "One-and-done donor",
-      as.character(donor_id) %in% pull(ids_of_repeat_donors) ~ "Recurrent donor")
-    )
-donations_plus <- donations %>%
-  left_join(projects, by = "project_id") %>%
-  left_join(donors, by = "donor_id") %>%
-  left_join(schools, by = "school_id") %>%
-  left_join(teachers, by = "teacher_id")
-
+#Loading the data
+donations_plus <- read_rds("data/donations_plus.rds")
+```
+```{r include=FALSE}
+#Making the plots and averages
 revenue_per_year_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = "pink")) +
@@ -96,59 +51,6 @@ perc_growth_per_year_plot <- yearly_growth_table %>%
   coord_cartesian(ylim = c(0,.5)) +
   geom_text(aes(label = percent(perc_growth)), position = position_dodge(), vjust = -1.5)
 perc_growth_per_year_plot
-
-donors_before_data <- donations_plus %>%
-  group_by(donor_id) %>%
-  filter(min(donor_cart_sequence) > 1) %>%
-  select(donor_id)
-donors_2012 <- donations_plus %>%
-  filter(year(donation_received_date) == 2012) %>%
-  select(donor_id)
-donors_2013 <- donations_plus %>%
-  filter(year(donation_received_date) == 2013) %>%
-  select(donor_id)
-donors_2014 <- donations_plus %>%
-  filter(year(donation_received_date) == 2014) %>%
-  select(donor_id)
-donors_2015 <- donations_plus %>%
-  filter(year(donation_received_date) == 2015) %>%
-  select(donor_id)
-donors_2016 <- donations_plus %>%
-  filter(year(donation_received_date) == 2016) %>%
-  select(donor_id)
-donors_2017 <- donations_plus %>%
-  filter(year(donation_received_date) == 2017) %>%
-  select(donor_id)
-donors_2018 <- donations_plus %>%
-  filter(year(donation_received_date) == 2018) %>%
-  select(donor_id)
-
-
-donations_plus <- donations_plus %>%
-  mutate(donor_gave_last_year = case_when(
-    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_2013),
-    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_2014),
-    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_2015),
-    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_2016),
-    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_2017)))
-
-donations_plus <- donations_plus %>%
-  mutate(donor_gave_ever_before = case_when(
-    year(donation_received_date) == 2012 ~ as.character(donor_id) %in% pull(donors_before_data),
-    year(donation_received_date) == 2013 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2014 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2015 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2016 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2017 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012),
-    year(donation_received_date) == 2018 ~ as.character(donor_id) %in% pull(donors_before_data) | as.character(donor_id) %in% pull(donors_2017) | as.character(donor_id) %in% pull(donors_2016) | as.character(donor_id) %in% pull(donors_2015) | as.character(donor_id) %in% pull(donors_2014) | as.character(donor_id) %in% pull(donors_2013) | as.character(donor_id) %in% pull(donors_2012)))
-
-donations_plus <- donations_plus %>%
-  mutate(retention_status = case_when(
-    donor_gave_last_year ~ "Retained donor",
-    !donor_gave_last_year & donor_gave_ever_before ~ "Reactivated donor",
-    !donor_gave_ever_before ~ "New donor"
-  ))
 
 revenue_per_year_per_retained <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
@@ -191,16 +93,19 @@ perc_proper_retained_per_year_plot <- yearly_proper_retained_table %>%
 ## On average, donations are growing by `r cagr` each year
 
 ```{r}
+#Calling growth plots
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
             
 
 ```
 
-The good news is that the total amount raised for teacher's projects is growing every year at a rate of almost 25%. The somewhat less positive news is that growth is slowing down, with only 16% in 2017. How worrisome this is, if at all, depends on the expectation and intention of the organization. Was this a surprise or is it an expected tapering off, a stabilization following a soar? What was the growth goal? Were there growth-oriented actions that performed below earlier years' results? If so, can we pinpoint the reasons?. In any case, if the goal is to maintain 25% growth, however, further action will be needed.
+The good news is that the total amount raised for teacher's projects is growing every year at a rate of almost 25%. The less positive news is that growth is slowing down, with only 16% in 2017. How worrisome this is, if at all, depends on the expectation and intention of the organization. The key question is: Was the tapering off a decision or is it a surprise? If the latter, can we pinpoint what didn't work as expected? In any case, if the goal is to maintain growth at around 25%, further action will be needed.
 
-Personally, when I look at the health of an organzation's fundraising base there's a question that I care about much more than how fast we are growing. That is: Are our donors coming back?
-
+Personally, when I looking at the health of an organzation's fundraising base there's a question that I care about much more than how fast we are growing. That is: Are our donors coming back?
 
 ```{r}
+#Calling retention plots
 plot_grid(perc_proper_retained_per_year_plot, revenue_per_year_per_retained, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 ```
+
+On average only `r avg_retention` of donors of a given year are giving again the next year.
