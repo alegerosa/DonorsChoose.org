@@ -263,11 +263,11 @@ year(donations$donation_received_date)
 
 
 ##THIS IS A LOT OF TEMP STEPS I USED TO GET THE "ONE-AND-DONE" METRIC, AND IT STILL HAS ISSUES, SO LEAVING HERE FOR NOW
+donationsdonoridchar <- as.character(donations$donor_id)
 onetime_vector <- donationsdonoridchar %in% pull(ids_of_onetime_donors)
 summary(onetime_vector)
 View(donations$donor_id)
 View(ids_of_onetime_donors)
-donationsdonoridchar <- as.character(donations$donor_id)
 as.character(donations$donor_id[1679253]) == ids_of_onetime_donors[1,]
 class(ids_of_onetime_donors)
 pull(ids_of_onetime_donors)
@@ -342,7 +342,7 @@ donations_plus <- donations_plus %>%
   ))
 table(donations_plus$retention_status)
 
-
+saveRDS(donations_plus, file = "data/donations_plus.rds")
 
 
 
