@@ -87,11 +87,13 @@ perc_proper_retained_per_year_plot <- yearly_proper_retained_table %>%
 ## Key Insights
 * Donations are growing by an average of `r cagr` every year, and growth has been slowing down.
 * Most donors have given only once, showing uncaptured opportunities for long term value.
-* Top 10 states account for 56% of donations, and top 3 states account for ~30%.
 * December, August and September account for ~35% of donations.
 
-## On average, donations are growing by `r cagr` each year
+Bottom Line: Over the covered period, DonorsChoose.org has done an exceptional job acquiring new donors and it has done so by launching campaigns at the right times and with the right partners. They have not been able, yet, to convert these new partners to 
 
+EN realidad> retention for new donors always more than retention for repeat donors. THey have way more new donors, their averages will be different as well. All expected.
+
+## On average, donations are growing by `r cagr` each year
 ```{r}
 #Calling growth plots
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
@@ -106,11 +108,9 @@ The less positive news is that growth is slowing down, with only 16% in 2017. Ho
 In any case, if the goal is to maintain growth at around 25%, further action will be needed.
 
 ## Most donors have given only give once
-
 If I want to assess the health of an organization's fundraising pipeline there's a question that I care about much more than how fast we are growing. That is: Are donors coming back?
 
 #### Value Retention: About half of a year's donation value doesn't come back the following year
-
 ```{r}
 #Calling value retention plots
 plot_grid(perc_proper_retained_per_year_plot, revenue_per_year_per_retained, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
@@ -119,7 +119,6 @@ plot_grid(perc_proper_retained_per_year_plot, revenue_per_year_per_retained, ali
 The organization's value retention rate in this period hovered around 45-50%, which is squarely in line with industry benchmarks: average retention for organizations included in the Association of Fundraising Professionals (AFP)'s [Fundraising Effectiveness Project](bit.ly/GIG_FEP_Reports) was 48%. This means that about half of donations in any given year are lost the next year, and have to be earned from newly acquired (or recovered) donors.
 
 #### Donor Retention: Less than 1 out of 5 of a year's donors give again the next year
-
 ```{r}
 #Creating and calling donor retention plots
 revenue_per_year_per_retained_donors <- donations_plus %>%
@@ -160,6 +159,18 @@ So far we've looked at the donation values, but if we look at the numbers at the
 
 Understanding and acting upon this metric would be very worth management's time. In a sense, this is a remarkable opportunity: thousands of donors that could come back given the right engagement efforts, likely requiring less investment than acquiring a whole new donor would.
 
-## Timing
+## Back-to-school, Giving Tuesday and end-of-year donations bring in the most dollars, season-wise
 
-Seguimos aca a ver que pasa
+```{r}
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = as.factor(month(donation_received_date))) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = month, y = donations, fill = year)) +
+  geom_col()
+```
+
+Most donation dollars come in the last half of the year, with December being the most important month at 12.8% of donation value, followed by August (11.5%) and September (10.5%). 
+
+## Seasonal Peaks
+Digging in more granularly: the biggest seasonal peaks come in back to school season, Giving Tuesday. The biggest the donation in the day was in March of 2017 (after a campaign that included a shout out on The Late Show with Stephen Colbert). The seasonality is not obvious

@@ -548,6 +548,7 @@ top_10_school_states <- donations_plus %>%
 #Let's figure out timing
 #Donations by month       
 by_month <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   group_by(month(donation_received_date)) %>%
   summarize(donation_value = sum(donation_amount),
             perc_of_total = sum(donation_amount)/sum(donations_plus$donation_amount)) %>%
@@ -565,13 +566,171 @@ donations_plus %>%
   geom_col()
 
 #Donations by day of the year
+#These are a whole bunch of plots and tables that I am trying, to see which ones prove more interesting
 donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   ggplot(aes(x = yday(donation_received_date), y = donation_amount, fill = as.factor(year(donation_received_date)))) +
   geom_col()
 
-ggplot(donations_plus, aes(x=day(donation_received_date),y=month(donation_received_date))) + geom_tile(aes(fill=donation_amount)) 
-#+ scale_fill_viridis()
+donations_plus %>%
+  group_by(month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = as.factor(month))) +
+  geom_tile(aes(fill = donations))
+
+
+donations_plus %>%
+  group_by(month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  arrange(desc(donations))
+
+donations_plus %>%
+  group_by(month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  arrange(desc(donations))
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ month, nrow = 4, ncol = 3)
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations)) +
+  geom_line() +
+  facet_wrap(~ month, nrow = 4, ncol = 3)
+
+top_n(donations_plus, 25, donation_amount) %>%
+  arrange(desc(donation_amount))
+
+top_25_donation_days <- donations_plus %>%
+  group_by(date = date(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  top_n(25, donations) %>%
+  arrange(desc(donations))
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, donation_received_date != as_date(2017-29-03)) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date)) %>%
+  filter() %>%
+  summarize(donations = sum(donation_amount)) %>%
+  arrange(desc(donations))
+donations_faceted_month_year <- donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ month, nrow = 4, ncol = 3)
+
+donations_faceted_month_year_with_outlier <- donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ month, nrow = 4, ncol = 3)
+
+donations_faceted_month_year_with_outlier +
+  coord_cartesian(ylim = c(0, 1300000))
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
+  group_by(year = as.factor(year(donation_received_date)), day = yday(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ year, nrow = 5, ncol = 1)
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
+  group_by(year = as.factor(year(donation_received_date)), week = week(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = week, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ year, nrow = 5, ncol = 1)
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = month, y = donations, fill = year)) +
+  geom_col() +
+  facet_wrap(~ year, nrow = 5, ncol = 1)
+
+donations_by_month <- donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = as.factor(month(donation_received_date))) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = month, y = donations, fill = year)) +
+  geom_col()
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), day = as_date(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line()
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
+  group_by(year = as.factor(year(donation_received_date)), day = as_date(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line()
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = month, y = donations, color = year)) +
+  geom_line()
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), week = week(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = week, y = donations, color = year)) +
+  geom_line()
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(date = date(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggTimeSeries::ggplot_calendar_heatmap("date", "donations") +
+  xlab(NULL) +
+  ylab(NULL) +
+  scale_fill_continuous(low = 'yellow', high = 'red') +
+  facet_wrap(~Year, ncol = 1)
+
+donations_plus %>% 
+  filter(year(donation_received_date) > 2015, year(donation_received_date) < 2018) %>%
+  group_by(month(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  arrange(desc(donations))
+
+donations_plus %>% 
+  filter(year(donation_received_date) > 2015, year(donation_received_date) < 2018) %>%
+  group_by(date = date(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = as.factor(month(date)), y = donations)) +
+  geom_boxplot()
+
+donations_plus %>% 
+  filter(year(donation_received_date) > 2015, year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = as.factor(month(donation_received_date)), y = donation_amount)) +
+  geom_boxplot()
+
+donations_plus %>% 
+  filter(year(donation_received_date) > 2015, year(donation_received_date) < 2018) %>%
+  group_by(date = date(donation_received_date), month = as.factor(month(donation_received_date))) %>%
+  summarize(donations = sum(donation_amount)) %>%
+  ggplot(aes(x = month, y = donations)) +
+  geom_boxplot()
 
 
 
@@ -579,7 +738,7 @@ ggplot(donations_plus, aes(x=day(donation_received_date),y=month(donation_receiv
 ggplot(donations, aes(x = donation_amount)) +
   geom_histogram(binwidth = 5) +
   geom_rug() +
-  coord_cartesian(xlim = c(0,5000))
+  coord_cartesian(xlim = c(0,5000)) 
 
 quantile(donations_plus$donation_amount, c(.1, .2, .3, .4, .5, .6, .7, .8, .9, .99, .999))
 
