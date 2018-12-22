@@ -437,7 +437,7 @@ avg_retention <- percent(mean(yearly_proper_retained_table$perc_retained, na.rm 
 perc_proper_retained_per_year_plot <- yearly_proper_retained_table %>%
   ggplot(aes(x = year, y = perc_retained)) +
   geom_line() +
-  labs(y = "Retention Rate") +
+  labs(y = "Value Retention") +
   theme(axis.line.x = element_blank(),
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
@@ -481,6 +481,41 @@ manual_retention_table <- manual_retention_table %>%
   mutate(value_retention = donations_retained/lag(total_donations),
          donor_retention = donors_retained/lag(total_donors))
 
+#Let's repeat the retention numbers but with donor-retention
+revenue_per_year_per_retained_donors <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  group_by(year = year(donation_received_date), retention_status) %>%
+  summarize(donors = n_distinct(donor_id)) %>%
+  ggplot(aes(x = year, y = donors, fill = retention_status)) +
+  geom_col() +
+  labs(y = "Number of donors", fill = "Donor gave in the year prior?") +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank()) +
+  scale_y_continuous(label = scales::comma)
+yearly_proper_retained_donors_table <- donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  group_by(year = year(donation_received_date), donor_gave_last_year) %>%
+  summarize(total = n_distinct(donor_id)) %>%
+  spread(donor_gave_last_year, total) %>%
+  mutate(total = sum(c(`FALSE`,`TRUE`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(perc_retained = `TRUE`/lag(total))
+avg_donor_retention <- percent(mean(yearly_proper_retained_donors_table$perc_retained, na.rm = TRUE))
+perc_proper_retained_donors_per_year_plot <- yearly_proper_retained_donors_table %>%
+  ggplot(aes(x = year, y = perc_retained)) +
+  geom_line() +
+  labs(y = "Donor Retention") +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  coord_cartesian(ylim = c(.1,.3)) +
+  geom_text(aes(label = percent(perc_retained)), position = position_dodge(), vjust = -1.5)
+plot_grid(perc_proper_retained_donors_per_year_plot, revenue_per_year_per_retained_donors, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
+
+
 #And now for final sanity check: get a random sample of 5 donations so I can manually check that it's imputed correctly
 sample <- sample_n(donations_plus, 5) %>%
   select(donor_id, donation_received_date, donor_gave_last_year)
@@ -510,6 +545,7 @@ top_10_school_states <- donations_plus %>%
   mutate(cumm_perc = cumsum(perc_of_total)) %>%
   top_n(10, perc_of_total)
 
+#Let's figure out timing
 #Donations by month       
 by_month <- donations_plus %>%
   group_by(month(donation_received_date)) %>%
@@ -517,6 +553,27 @@ by_month <- donations_plus %>%
             perc_of_total = sum(donation_amount)/sum(donations_plus$donation_amount)) %>%
   arrange(desc(perc_of_total)) %>%
   mutate(cumm_perc = cumsum(perc_of_total))
+donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = month(donation_received_date), y = donation_amount, fill = as.factor(year(donation_received_date)))) +
+  geom_col()
+
+#Donations by week of the year
+donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = week(donation_received_date), y = donation_amount, fill = as.factor(year(donation_received_date)))) +
+  geom_col()
+
+#Donations by day of the year
+donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = yday(donation_received_date), y = donation_amount, fill = as.factor(year(donation_received_date)))) +
+  geom_col()
+
+ggplot(donations_plus, aes(x=day(donation_received_date),y=month(donation_received_date))) + geom_tile(aes(fill=donation_amount)) 
+#+ scale_fill_viridis()
+
+
 
 
 ggplot(donations, aes(x = donation_amount)) +
