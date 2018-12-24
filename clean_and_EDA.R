@@ -629,22 +629,39 @@ donations_faceted_month_year <- donations_plus %>%
 
 donations_faceted_month_year_with_outlier <- donations_plus %>%
   filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
+  group_by(year = as.factor(year(donation_received_date)), month = factor(month(donation_received_date), labels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")), day = day(donation_received_date)) %>%
+  summarize(donations = sum(donation_amount)/1000) %>%
+  ggplot(aes(x = day, y = donations, color = year)) +
+  geom_line() +
+  facet_wrap(~ month, nrow = 4, ncol = 3) +
+  ylab("Donation value (thousands)") +
+  theme(legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 9)) +
+  scale_y_continuous(labels = dollar_format())
+
+
+donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, retention_status != "New donor") %>%
   group_by(year = as.factor(year(donation_received_date)), month = month(donation_received_date), day = day(donation_received_date)) %>%
   summarize(donations = sum(donation_amount)) %>%
   ggplot(aes(x = day, y = donations, color = year)) +
   geom_line() +
-  facet_wrap(~ month, nrow = 4, ncol = 3)
+  facet_wrap(~ month, nrow = 4, ncol = 3) 
 
 donations_faceted_month_year_with_outlier +
   coord_cartesian(ylim = c(0, 1300000))
 
-donations_plus %>%
-  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
+donations_by_day_facet_year <- donations_plus %>%
+  filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
   group_by(year = as.factor(year(donation_received_date)), day = yday(donation_received_date)) %>%
   summarize(donations = sum(donation_amount)) %>%
   ggplot(aes(x = day, y = donations, color = year)) +
   geom_line() +
   facet_wrap(~ year, nrow = 5, ncol = 1)
+
+
 
 donations_plus %>%
   filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018, !(day(donation_received_date) == 29 & month(donation_received_date) == 3 & year(donation_received_date) == 2017)) %>%
@@ -664,10 +681,15 @@ donations_plus %>%
 
 donations_by_month <- donations_plus %>%
   filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
-  group_by(year = as.factor(year(donation_received_date)), month = as.factor(month(donation_received_date))) %>%
-  summarize(donations = sum(donation_amount)) %>%
+  group_by(year = fct_rev(as.factor(year(donation_received_date))), month = factor(month(donation_received_date), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))) %>%
+  summarize(donations = sum(donation_amount)/1000000) %>%
   ggplot(aes(x = month, y = donations, fill = year)) +
-  geom_col()
+  geom_col() +
+  ylab("Donation value (millions)") +
+  theme(legend.title = element_blank(),
+        axis.title.x = element_blank()) +
+  scale_y_continuous(labels = dollar_format())
+  
 
 donations_plus %>%
   filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
@@ -746,8 +768,17 @@ ggplot(donations_plus, aes(x = first_donation, y = donation_amount)) +
   geom_boxplot() +
   coord_cartesian(ylim = c(0, 100))
 
-
-
+donations_plus %>%
+  filter(year(donation_received_date) > 2016 & year(donation_received_date) < 2018) %>%
+  group_by(month(donation_received_date)) %>%
+  summarize(donation_value = sum(donation_amount),
+            perc_of_total = sum(donation_amount)/sum(donations_plus$donation_amount)) %>%
+  arrange(desc(perc_of_total)) %>%
+  mutate(cumm_perc = cumsum(perc_of_total))
+donations_plus %>%
+  filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
+  ggplot(aes(x = month(donation_received_date), y = donation_amount, fill = as.factor(year(donation_received_date)))) +
+  geom_col()
 
 #----
 #This will be here for whenever is the right time to split between training, testing and validation
