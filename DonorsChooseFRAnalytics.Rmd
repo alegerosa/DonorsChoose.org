@@ -15,9 +15,7 @@ library(cowplot)
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-## The project
-
-This project analyses data released by [DonorsChoose.org](www.donorschoose.org) for their mid-2018 [Kaggle competition](https://www.kaggle.com/donorschoose/io). The dataset consists of 6 tables containing information on more than 4 million donations. In this writeup, I set out to summarize a few key insights regarding their fundrasing performance between 2013 and 2017. For a more comprehensive approach, the full code of my ongoing exploration of the dataset can be found [here](https://github.com/alegerosa/DonorsChoose.org). 
+This project analyses data released by [DonorsChoose.org](www.donorschoose.org) for their mid-2018 [Kaggle competition](https://www.kaggle.com/donorschoose/io). The dataset consists of 6 tables containing information on more than 4 million donations, and was analyzed using R. In this writeup, I set out to summarize a few key insights regarding their fundrasing performance between 2013 and 2017. For a more comprehensive approach, the full code of my ongoing exploration of the dataset can be found [here](https://github.com/alegerosa/DonorsChoose.org). 
 
 ```{r include=FALSE}
 #Loading the data
@@ -93,9 +91,9 @@ perc_proper_retained_per_year_plot <- yearly_proper_retained_table %>%
 * Most donors have given only once, showing uncaptured opportunities for long term value.
 * Back-to-school and end-of-year donations mark the most important yearly-consistent giving times, with Giving Tuesday and March campaigns gaining ground.
 
-**Bottom line:** Over the covered period DonorsChoose.org has shown exceptional growth and new donor acquisition through well-performing and well-timed campaigns. They have not yet been able to similarly outperform industry averages when it comes to retention. 
+**Bottom line:** Over the covered period DonorsChoose.org has shown exceptional success in growth and new donor acquisition through well-performing and well-timed campaigns. They have not yet been able to similarly outperform industry averages when it comes to retention. 
 
-## 1. On average, donations are growing by `r cagr` each year
+## On average, donations are growing by `r cagr` each year
 ```{r}
 #Calling growth plots
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
@@ -105,12 +103,12 @@ plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 
 
 The great news is that the total amount raised for teacher's projects is growing every year at a rate of almost 25% on average. This is considerably above the overall increase in charitable giving by individuals, which [Giving USA](https://givingusa.org/tag/giving-usa-2018/) identified as 5.2% in 2017.
 
-The less positive news is that growth is slowing down, with only 16% in 2017. How worrisome this is, if at all, depends on the expectation and intention of the organization. The key question here is: Was the tapering off a result of investment and management decisions or was it a surprise? If the latter is true, can we pinpoint what didn't work as expected?
+The less positive news is that growth is slowing down, with only 16% in 2017. How worrisome this is, if at all, depends on the expectation and intention of the organization. The key question here is: Was the tapering off an anticipated result of deliberate investment and management decisions or was it a surprise? If the latter is true, can we pinpoint what didn't work as expected?
 
 In any case, if the goal is to maintain growth at around 25%, further action will be needed.
 
-## 2. Most donors have given only give once
-If I want to assess the health of an organization's fundraising pipeline there's a question that I care about much more than how fast we are growing. That is: Are donors coming back?
+## Most donors have given only once
+If I want to assess the health of an organization's fundraising pipeline, there's a question that I care about much more than how fast they are growing. That question is: Are donors coming back?
 
 #### Value Retention: About half of a year's donation value doesn't return the following year
 ```{r}
@@ -159,11 +157,11 @@ perc_proper_retained_donors_per_year_plot <- yearly_proper_retained_donors_table
 plot_grid(perc_proper_retained_donors_per_year_plot, revenue_per_year_per_retained_donors, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 ```
 
-So far we've looked at the donation values, but if we look at the numbers at the donor level, it gets even more interesting: the average donor retention is `r avg_donor_retention`. Not only is this far below the 45.5 % average for organizations included in AFP reports, but it's also trending downwards.
+So far we've looked at donation values, but if we look at the numbers at the donor level, it gets even more interesting: the average donor retention is `r avg_donor_retention`. Not only is this far below the 45.5 % average for organizations included in AFP reports, but it's also trending downwards.
 
-Understanding and acting upon this metric would be very worth management's time. In a sense, this is a remarkable opportunity, with thousands of donors that could come back, likely requiring less investment than acquiring entirely new donors would.
+Understanding and acting upon this metric would be very well worth management's time. In a sense, this is a remarkable opportunity, with thousands of donors that could come back, likely requiring less investment than acquiring entirely new donors would.
 
-## 3. Back-to-school and end-of-year donations mark the most important yearly-consistent giving times
+## Back-to-school and end-of-year donations mark the most important yearly-consistent giving times
 
 ```{r}
 donations_plus %>%
@@ -184,7 +182,7 @@ Most donation dollars come in the last half of the year, with December being the
 ```{r}
 donations_plus %>%
   filter(year(donation_received_date) > 2012, year(donation_received_date) < 2018) %>%
-  group_by(year = as.factor(year(donation_received_date)), month = factor(month(donation_received_date), labels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")), day = day(donation_received_date)) %>%
+  group_by(year = fct_rev(as.factor(year(donation_received_date))), month = factor(month(donation_received_date), labels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")), day = day(donation_received_date)) %>%
   summarize(donations = sum(donation_amount)/1000) %>%
   ggplot(aes(x = day, y = donations, color = year)) +
   geom_line() +
@@ -197,10 +195,10 @@ donations_plus %>%
   scale_y_continuous(labels = dollar_format())
 ```
 
-December donations are relatively spread out during the month, and start rising in the last week, culminating on December 31st, which is consistent with what I'd expect with the holiday season being a big giving time in US culture and donors making sure they get their donations in before the end of the tax year. August donations, on the other hand, show one peak in the last third of the month for each of the last four years, which suggests a campaign push around the start of the school year.
+December donations are relatively spread out during the month, and start rising in the last week, culminating on December 31st, which is consistent with what I'd expect given that the holiday season is a big philanthtropy time in US culture and that donors are making sure they get their donations in before the end of the tax year. August donations, on the other hand, show one peak in the last third of the month for each of the last four years, which suggests a campaign push around the start of the school year.
 
 The most noticeable daily peaks fall outside of the top 3  months. The highs in the last few days of November correspond to the dates for [Giving Tuesday](https://en.wikipedia.org/wiki/Giving_Tuesday) on those years. This suggests that DonorsChoose.org adopted this campaign, with great success, on 2016. This would make sense, given that the impact of this sector-wide campaign started really [taking off in 2015](https://en.wikipedia.org/wiki/Giving_Tuesday#History)).
 
-Lastly, the biggest donation day of the entire dataset, by far, is March 29th 2017, with more than 2 million dollars. A Google search finds that on this day DonorsChoose.org ran a campaign they called #BestSchoolDay, involving celebrity shoutouts on [Twitter](https://twitter.com/johnkrasinski/status/847078735148933120) and [TV talk shows](https://www.cbsnews.com/news/stephen-colbert-best-school-day-donors-choose-funding-american-classrooms-in-need/). While at first this might seem like a one time event, digging in more closely and with the help of Google we find that the other donation peak in March corresponds to 2016's edition of #BestSchool day, and that they also run a similar campaign in March 2018.
+Lastly, the biggest donation day of the entire dataset, by far, is March 29th 2017, with more than 2 million dollars raised. A Google search finds that on this day DonorsChoose.org ran a campaign they called #BestSchoolDay, involving celebrity shoutouts on [Twitter](https://twitter.com/johnkrasinski/status/847078735148933120) and [TV talk shows](https://www.cbsnews.com/news/stephen-colbert-best-school-day-donors-choose-funding-american-classrooms-in-need/). While at first this might seem like a one-time event, digging in more closely, and with the help of Google, we find that the other donation peak in March corresponds to 2016's edition of #BestSchoolDay, and that they also run a similar campaign in March 2018.
 
-This paints the picture of an organization that has been very smart at capturing existing seasonal opportunities and leveraging partners to create their own giving pushes at less contested times of the year, which explains their remarkable success at acquiring new donors.
+This paints the picture of an organization that has been very smart at capturing existing seasonal opportunities and at leveraging partners to create their own giving pushes at less contested times of the year, which explains their remarkable success at acquiring new donors.
