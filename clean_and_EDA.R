@@ -6,8 +6,11 @@ library(cowplot)
 
 #First, we load the data 
 ## In order to work with all the dataframes in the directory, we'll create a vector with all their paths and then use lapply and read_csv to load all of them at once
+#If you get an error, lookout for a donations_plus.rds file in your data folder and consider removing it or temporarily moving it to another folder before moving on (see comments and code in lines ~345)
 df_paths <- list.files("data", full.names = TRUE)
 list_of_dfs <- lapply(df_paths, read_csv)
+
+
 
 #We name the dataframes in the resulting list with the file names they came from (minus the extension)
 df_names <- tolower(basename(substr(df_paths, 1, nchar(df_paths)-4)))
@@ -342,14 +345,20 @@ donations_plus <- donations_plus %>%
   ))
 table(donations_plus$retention_status)
 
+##The file created below can create problems when running the first few lines of this script next time you want to use it in this environment, so handle with care
 saveRDS(donations_plus, file = "data/donations_plus.rds")
+
+#If you've ran the line above in this environment before, and you only care about the charts and calculations that ended up in the blog post, you can save time by starting here:
+donations_plus <- readRDS(file = "data/donations_plus.rds")
 
 
 
 #Revenue and growth trends by year
 revenue_per_year_plot <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
-  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = "pink")) +
+  group_by(year = year(donation_received_date), retention_status) %>%
+  summarize(donation_millions = sum(donation_amount)/1000000) %>%
+  ggplot(aes(x = year, y = donation_millions, fill = "pink")) +
   geom_col() +
   labs(y = "Total donation value (in millions)") +
   theme(legend.position = "none",
@@ -376,15 +385,17 @@ perc_growth_per_year_plot
 plot_grid(perc_growth_per_year_plot, revenue_per_year_plot, align = "v", nrow = 2, rel_heights = c(1/4, 3/4))
 
 #Revenue and retention trends per year
-revenue_per_year_per_first_plot <- donations_plus %>%
+revenue_per_year_per_first_plot <- donations %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
-  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = first_donation)) +
+  group_by(year = year(donation_received_date), first_donation) %>%
+  summarize(donation_millions = sum(donation_amount)/1000000) %>%
+  ggplot(aes(x = year, y = donation_millions, fill = first_donation)) +
   geom_col() +
   labs(y = "Total donation value (in millions)", fill = "From a first-time donor?") +
   theme(legend.position = "bottom",
         axis.title.x = element_blank()) +
   scale_y_continuous(labels = dollar_format())
-yearly_retained_table <- donations_plus %>%
+yearly_retained_table <- donations %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
   group_by(year = year(donation_received_date), first_donation) %>%
   summarize(total = sum(donation_amount)) %>%
@@ -418,7 +429,9 @@ yearly_growth_table %>% ggplot(aes(x = year, y = total)) +
 #New retention charts
 revenue_per_year_per_retained <- donations_plus %>%
   filter(year(donation_received_date) > 2012 & year(donation_received_date) < 2018) %>%
-  ggplot(aes(x = year(donation_received_date), y = donation_amount/1000000, fill = retention_status)) +
+  group_by(year = year(donation_received_date), retention_status) %>%
+  summarize(donation_millions = sum(donation_amount)/1000000) %>%
+  ggplot(aes(x = year, y = donation_millions, fill = retention_status)) +
   geom_col() +
   labs(y = "Total donation value (in millions)", fill = "Donor gave in the year prior?") +
   theme(legend.position = "bottom",
